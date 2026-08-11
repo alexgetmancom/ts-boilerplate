@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 
 /**
  * Minimal key/value state store on top of bun:sqlite — zero extra dependencies.
@@ -8,16 +8,21 @@ import { dirname } from "node:path";
  */
 export type OpenDatabase = {
   sqlite: Database;
+  path: string;
   close: () => void;
 };
 
 export function openDatabase(url: string): OpenDatabase {
-  if (url !== ":memory:") mkdirSync(dirname(url), { recursive: true });
+  // Resolve up front: a relative path would otherwise follow whatever cwd the process was started in.
+  const path = url === ":memory:" ? url : resolve(url);
+  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
 
-  const sqlite = new Database(url, { create: true });
-  sqlite.exec("PRAGMA journal_mode = WAL");
-  sqlite.exec("PRAGMA foreign_keys = ON");
-  return { sqlite, close: () => sqlite.close() };
+  const sqlite = new Database(path, { create: true, strict: true });
+  // A writer holds the lock during migrations and long transactions; wait instead of failing instantly.
+  sqlite.run("PRAGMA busy_timeout = 30000");
+  if (path !== ":memory:") sqlite.run("PRAGMA journal_mode = WAL");
+  sqlite.run("PRAGMA foreign_keys = ON");
+  return { sqlite, path, close: () => sqlite.close() };
 }
 
 export function migrateDatabase(database: OpenDatabase): void {
