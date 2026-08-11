@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { ConfigurationError, loadConfig } from "../src/config.js";
 
-const base = { TELEGRAM_BOT_TOKEN: "123:abc" };
+const base = { TELEGRAM_BOT_TOKEN: "123:abc", ALLOWED_USERS: "42" };
 
 describe("loadConfig", () => {
   test("applies defaults", () => {
     const config = loadConfig(base);
     expect(config.BOT_MODE).toBe("polling");
     expect(config.PORT).toBe(8080);
-    expect(config.ALLOWED_USERS).toEqual([]);
+    expect(config.ALLOWED_USERS).toEqual([42]);
   });
 
   test("parses the allowed user list", () => {
@@ -17,6 +17,11 @@ describe("loadConfig", () => {
 
   test("rejects a malformed allowed user list", () => {
     expect(() => loadConfig({ ...base, ALLOWED_USERS: "42,nope" })).toThrow(ConfigurationError);
+  });
+
+  test("refuses to run a bot with an empty allowlist", () => {
+    expect(() => loadConfig({ TELEGRAM_BOT_TOKEN: "123:abc" })).toThrow(ConfigurationError);
+    expect(() => loadConfig({ TELEGRAM_BOT_TOKEN: "123:abc", ALLOWED_USERS: "" })).toThrow(ConfigurationError);
   });
 
   test("requires a token unless http-only", () => {

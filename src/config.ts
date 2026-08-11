@@ -37,7 +37,7 @@ const envSchema = z.object({
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().url().optional(),
   ),
-  /** Empty list = bot is open to everyone. Set it in production. */
+  /** Nobody is allowed until listed here — an unset allowlist must never mean "open to everyone". */
   ALLOWED_USERS: userIdList,
   DATABASE_URL: z.string().min(1).default("./data/app.db"),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
@@ -65,6 +65,9 @@ export function loadConfig(source: Record<string, string | undefined> = process.
   const config = parsed.data;
   if (config.BOT_MODE !== "http-only" && !config.TELEGRAM_BOT_TOKEN) {
     throw new ConfigurationError("TELEGRAM_BOT_TOKEN is required unless BOT_MODE is http-only");
+  }
+  if (config.BOT_MODE !== "http-only" && config.ALLOWED_USERS.length === 0) {
+    throw new ConfigurationError("ALLOWED_USERS must list at least one Telegram user ID");
   }
   if (config.BOT_MODE === "webhook") {
     if (!config.TELEGRAM_WEBHOOK_SECRET) {

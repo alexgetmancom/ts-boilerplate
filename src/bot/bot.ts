@@ -36,10 +36,10 @@ export function createBot(config: AppConfig, database: OpenDatabase): BotRuntime
     await next();
   });
 
-  // Authorization: an empty ALLOWED_USERS list means the bot is open.
+  // Authorization: only listed users get through, and loadConfig guarantees the list is non-empty.
   bot.use(async (context, next) => {
     const userId = context.from?.id;
-    if (config.ALLOWED_USERS.length > 0 && (userId === undefined || !config.ALLOWED_USERS.includes(userId))) {
+    if (userId === undefined || !config.ALLOWED_USERS.includes(userId)) {
       log("warn", "Rejected update from unauthorized user", { userId });
       return;
     }

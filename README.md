@@ -68,8 +68,9 @@ opened and the bot is created. A missing token is a `ConfigurationError` in the 
 **Logs never leak secrets.** `redact()` masks keys matching `/token|secret|password|api_key|.../i`
 recursively, including arrays and `Error` values. In production each record is a single JSON line.
 
-**The allowlist is open by default.** An empty `ALLOWED_USERS` lets everyone in, which is convenient
-during development. In production the list must be filled in.
+**The allowlist is closed by default.** `ALLOWED_USERS` is mandatory whenever a bot runs, and the
+service refuses to start without it. An allowlist that is easy to leave unset is one that will be
+left unset in production.
 
 **Graceful shutdown is real, not decorative.** `SIGTERM` → workers (each finishes its current cycle)
 → bot → HTTP server (10s to drain, then forced) → database close. A repeated signal is ignored.
