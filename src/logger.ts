@@ -1,16 +1,25 @@
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-const sensitiveKey = /token|secret|password|api[_-]?key|authorization|cookie|credential/i;
+const sensitivePatterns = [/token|secret|password|api[_-]?key|authorization|cookie|credential|session/i];
+
+/**
+ * Every project ends up with secrets the generic pattern cannot know about — a vendor's `ssecurity`
+ * field, a signed `download_url`. Register those at startup instead of editing this file downstream.
+ */
+export function redactKeysMatching(pattern: RegExp): void {
+  sensitivePatterns.push(pattern);
+}
+
+function isSensitive(key: string): boolean {
+  return sensitivePatterns.some((pattern) => pattern.test(key));
+}
 
 export function redact(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redact);
   if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack };
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, nestedValue]) => [
-        key,
-        sensitiveKey.test(key) ? "[REDACTED]" : redact(nestedValue),
-      ]),
+      Object.entries(value).map(([key, nestedValue]) => [key, isSensitive(key) ? "[REDACTED]" : redact(nestedValue)]),
     );
   }
   return value;

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { sleep } from "../src/runtime/sleep.js";
 import { RuntimeSupervisor } from "../src/runtime/supervisor.js";
 import { startIntervalWorker } from "../src/runtime/worker.js";
 
@@ -87,5 +88,27 @@ describe("startIntervalWorker", () => {
 
   test("rejects a non-positive interval", () => {
     expect(() => startIntervalWorker("test", 0, () => {})).toThrow();
+  });
+});
+
+describe("sleep", () => {
+  test("resolves after the delay", async () => {
+    const started = Date.now();
+    await sleep(20);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(15);
+  });
+
+  test("returns early when the signal aborts", async () => {
+    const controller = new AbortController();
+    const started = Date.now();
+    setTimeout(() => controller.abort(), 10);
+    await sleep(5_000, controller.signal);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+
+  test("returns immediately for an already aborted signal", async () => {
+    const started = Date.now();
+    await sleep(5_000, AbortSignal.abort());
+    expect(Date.now() - started).toBeLessThan(100);
   });
 });

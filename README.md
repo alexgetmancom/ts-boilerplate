@@ -44,9 +44,14 @@ src/
     supervisor.ts      registry of stoppable resources, stopped in reverse order
     worker.ts          interval worker: never overlaps cycles, awaits the current one on stop
     shutdown.ts        stops Bun.serve with a timeout before forcing
+    sleep.ts           delay that returns early when an AbortSignal fires
     status.ts          botReady / botError backing /readyz
-  storage/kv.ts        bun:sqlite, migration, getState/setState
-tests/                 bun test: config, http, kv, logger
+  storage/
+    kv.ts              bun:sqlite, migration, getState/setState
+    files.ts           atomic writes, owner-only mode for secrets
+scripts/
+  manage-webhook.ts    set / delete / info for the Telegram webhook
+tests/                 bun test: config, http, kv, files, logger, runtime
 ```
 
 Plus a `Dockerfile` (multi-stage, non-root, `USER bun`), a `compose.yaml` with a healthcheck, and
@@ -67,6 +72,9 @@ opened and the bot is created. A missing token is a `ConfigurationError` in the 
 
 **Logs never leak secrets.** `redact()` masks keys matching `/token|secret|password|api_key|.../i`
 recursively, including arrays and `Error` values. In production each record is a single JSON line.
+Projects have secrets the generic pattern cannot anticipate — a vendor's `ssecurity` field, a signed
+`download_url` — so register those at startup with `redactKeysMatching(/…/i)` rather than editing the
+module downstream.
 
 **The allowlist is closed by default.** `ALLOWED_USERS` is mandatory whenever a bot runs, and the
 service refuses to start without it. An allowlist that is easy to leave unset is one that will be
@@ -74,6 +82,10 @@ left unset in production.
 
 **Graceful shutdown is real, not decorative.** `SIGTERM` → workers (each finishes its current cycle)
 → bot → HTTP server (10s to drain, then forced) → database close. A repeated signal is ignored.
+
+**Secrets are written atomically and owner-only.** `writeSecretJson()` writes through a temporary
+file at mode `0600` and renames it into place: a crash mid-write cannot truncate a credential file,
+and the secret is never briefly world-readable.
 
 **liveness ≠ readiness.** `/healthz` answers as long as the process is alive. `/readyz` probes the
 database and, in polling mode, waits for the bot to actually start — Docker and load balancers use
@@ -89,10 +101,7 @@ different probes.
 - **You need periodic work:** one more `startIntervalWorker(...)` inside `supervisor.register(...)`.
 - **You do not need Telegram:** set `BOT_MODE=http-only` and delete the `bot/` directory.
 
-## Migration order for existing projects
+## Projects on this stack
 
-1. `x-news-bot` — already on this stack, align its structure with the template.
-2. `botflix` — the TypeScript rewrite exists but runs on pnpm/node/tsx/vitest; move it to Bun and
-   finish the remaining items in its PLAN.md.
-3. `zoom-telegram-bot` — Python, ~4k lines, few dependencies.
-4. `miband-bot` — Python plus BLE and a vendored `mi-fitness-python`; the hardest one, so it goes last.
+`alexgetman.com`, `check-radar`, `x-news-bot`, `botflix`, `miband-bot`, `zoom-tg-bot`. Anything
+learned in one of them that is not project-specific belongs back here.
