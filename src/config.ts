@@ -40,6 +40,11 @@ const envSchema = z.object({
   /** Nobody is allowed until listed here — an unset allowlist must never mean "open to everyone". */
   ALLOWED_USERS: userIdList,
   DATABASE_URL: z.string().min(1).default("./data/app.db"),
+  /** Bearer token for POST /api/mcp. Unset means the MCP endpoint stays closed. */
+  MCP_TOKEN: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(32).optional(),
+  ),
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   BIND_HOST: z.string().min(1).default("127.0.0.1"),
   WORKER_INTERVAL_SECONDS: z.coerce.number().int().positive().default(3600),

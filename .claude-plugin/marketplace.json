@@ -1,0 +1,12 @@
+{
+  "name": "alexgetman",
+  "description": "Plugins for operating self-hosted alexgetman.com services.",
+  "owner": { "name": "Alex Getman", "url": "https://alexgetman.com" },
+  "plugins": [
+    {
+      "name": "ts-boilerplate",
+      "source": "./plugin",
+      "description": "Operate a service built from ts-boilerplate over MCP from any machine."
+    }
+  ]
+}

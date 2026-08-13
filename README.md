@@ -35,7 +35,9 @@ bun run check
 src/
   config.ts            env → Zod schema → typed AppConfig, fails fast at startup
   logger.ts            structured logging, JSON in production, redacts tokens and secrets
-  http.ts              Hono: /, /healthz (liveness), /readyz (readiness), /telegram/webhook
+  http.ts              Hono: /, /healthz (liveness), /readyz (readiness), /telegram/webhook, /api/mcp
+  mcp.ts               MCP server: JSON-RPC tools an agent calls to operate the running service
+  auth.ts              timing-safe bearer-token check
   index.ts             composition root: wiring, startup, graceful shutdown
   bot/
     bot.ts             grammY: config middleware, allowlist, /start, /ping, notifier
@@ -51,7 +53,10 @@ src/
     files.ts           atomic writes, owner-only mode for secrets
 scripts/
   manage-webhook.ts    set / delete / info for the Telegram webhook
-tests/                 bun test: config, http, kv, files, logger, runtime
+tests/                 bun test: config, http, kv, files, logger, mcp, runtime
+plugin/                installable plugin: MCP config + skill, for operating a deployment
+AGENTS.md              how an agent works in this repo (CLAUDE.md is a symlink to it)
+.claude/launch.json    how an agent starts the dev server
 ```
 
 Plus a `Dockerfile` (multi-stage, non-root, `USER bun`), a `compose.yaml` with a healthcheck, and
@@ -87,6 +92,12 @@ left unset in production.
 file at mode `0600` and renames it into place: a crash mid-write cannot truncate a credential file,
 and the secret is never briefly world-readable.
 
+**The service is agent-operable, not just agent-editable.** `POST /api/mcp` exposes declared tools
+behind a bearer token, so an agent runs a deployment through its own interface instead of reaching
+for the database file. One Zod schema per tool is both the validator and the schema the client sees
+— a field rejected at runtime can never be a field advertised as accepted, and no JSON Schema is
+written by hand. Adding a tool is one entry in `toolDefs`.
+
 **liveness ≠ readiness.** `/healthz` answers as long as the process is alive. `/readyz` probes the
 database and, in polling mode, waits for the bot to actually start — Docker and load balancers use
 different probes.
@@ -100,6 +111,8 @@ different probes.
   with a Zod schema at the boundary.
 - **You need periodic work:** one more `startIntervalWorker(...)` inside `supervisor.register(...)`.
 - **You do not need Telegram:** set `BOT_MODE=http-only` and delete the `bot/` directory.
+- **An agent should operate the service:** add tools to `toolDefs` in `src/mcp.ts`, then describe
+  when to use them in `plugin/skills/service/SKILL.md`. Set `MCP_TOKEN` to mount the endpoint.
 
 ## Projects on this stack
 

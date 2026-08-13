@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "src/index.ts"],
+      "port": 8080,
+      "env": {
+        "NODE_ENV": "development",
+        "BOT_MODE": "http-only",
+        "DATABASE_URL": "./data/dev.db",
+        "BIND_HOST": "127.0.0.1",
+        "PORT": "8080",
+        "MCP_TOKEN": "dev-token-dev-token-dev-token-dev",
+        "WORKER_INTERVAL_SECONDS": "60"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "service": {
+      "type": "http",
+      "url": "${user_config.service_url}",
+      "headers": { "Authorization": "Bearer ${user_config.service_token}" }
+    }
+  }
+}
